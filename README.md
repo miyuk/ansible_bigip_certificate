@@ -59,5 +59,5 @@ create certificate under `/etc/nginx/certs`. as `example.com`.
     bigip_dest_crt_name: server
     bigip_dest_ssl_profile_name: server
   roles:
-    - ../..
+    - bigip_certificate
 ```
