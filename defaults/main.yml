@@ -1,0 +1,20 @@
+---
+# Config BIG-IP Credential Provider
+bigip_rest_provider:
+  server: "{{ ansible_host }}"
+  user: "{{ bigip_rest_user }}"
+  password: "{{ bigip_rest_password }}"
+  server_port: 443
+  transport: rest
+  validate_certs: no
+
+# Config Certificate source
+bigip_src_crt_path: "{{ certificate_directory }}/{{ certificate_crt_filename }}"
+bigip_src_key_path: "{{ certificate_directory }}/{{ certificate_crt_filename }}"
+
+# Config Certificte destination
+bigip_partition: Common
+bigip_dest_crt_path: "/config/ssl/ssl.crt/{{ bigip_dest_crt_name }}"
+bigip_dest_key_path: "/config/ssl/ssl.key/{{ bigip_dest_key_name }}"
+bigip_dest_crt_name: server
+bigip_dest_ssl_profile_name: server

@@ -1,0 +1,20 @@
+---
+- hosts: localhost
+  connection: local
+  vars:
+    bigip_rest_provider:
+      server: 192.168.1.1
+      user: admin
+      password: admin
+      server_port: 443
+      transport: rest
+      validate_certs: no
+    bigip_src_crt_path: "{{ certificate_directory }}/{{ certificate_crt_filename }}"
+    bigip_src_key_path: "{{ certificate_directory }}/{{ certificate_crt_filename }}"
+    bigip_partition: Common
+    bigip_dest_crt_path: "/config/ssl/ssl.crt/{{ bigip_dest_crt_name }}"
+    bigip_dest_key_path: "/config/ssl/ssl.key/{{ bigip_dest_key_name }}"
+    bigip_dest_crt_name: server
+    bigip_dest_ssl_profile_name: server
+  roles:
+    - ../..

@@ -1,0 +1,89 @@
+---
+- name: Get this time as JST
+  set_fact:
+    now: "{{ lookup('pipe', 'TZ=JST-9 date +%Y%m%d%H%M%S') }}"
+
+- name: Get new certificate fingerprint
+  command: "openssl x509 -in {{ bigip_src_crt_path }} -noout -sha256 -fingerprint"
+  register: bigip_new_crt_fingerprint_result
+  delegate_to: localhost
+  changed_when: no
+
+- name: Set new certificate fingerprint
+  set_fact:
+    bigip_new_crt_fingerprint: "{{ bigip_new_crt_fingerprint_result.stdout | \
+      regex_replace('^SHA256 Fingerprint=(.*)$', '\\1') }}"
+
+- name: Get current certificate info
+  bigip_device_facts:
+    provider: "{{ bigip_rest_provider }}"
+    gather_subset:
+      - client-ssl-profiles
+      - ssl-certs
+      - ssl-keys
+  register: bigip_facts_result
+  changed_when: no
+
+- name: Set current certificate path
+  set_fact:
+    bigip_current_crt_path: "{{ bigip_facts_result.client_ssl_profiles | \
+      selectattr('name', '==', bigip_dest_ssl_profile_name) | \
+      map(attribute='certificate_file') | first }}"
+
+- name: Set current certificate info
+  set_fact:
+    bigip_current_crt_name: "{{ bigip_facts_result.ssl_certs | \
+      selectattr('full_path', '==', bigip_current_crt_path ) | \
+      map(attribute='name') | first }}"
+    bigip_current_crt_fingerprint: "{{ bigip_facts_result.ssl_certs | \
+      selectattr('full_path', '==', bigip_current_crt_path ) | \
+      map(attribute='fingerprint') | first | \
+      regex_replace('^SHA256/(.*)$', '\\1') }}"
+
+- block:
+  - name: "Import new certificate '{{ bigip_dest_crt_name }}_{{ now }}'"
+    bigip_ssl_certificate:
+      provider: "{{ bigip_rest_provider }}"
+      name: "{{ bigip_dest_crt_name }}_{{ now }}"
+      content: "{{ lookup('file', bigip_src_crt_path) }}"
+    delegate_to: localhost
+
+  - name: "Import new private key '{{ bigip_dest_crt_name }}_{{ now }}'"
+    bigip_ssl_key:
+      provider: "{{ bigip_rest_provider }}"
+      name: "{{ bigip_dest_crt_name }}_{{ now }}"
+      content: "{{ lookup('file', bigip_src_key_path) }}"
+    delegate_to: localhost
+
+  - name: Change BIG-IP Profile Client SSL
+    bigip_profile_client_ssl:
+      provider: "{{ bigip_rest_provider }}"
+      name: "{{ bigip_dest_ssl_profile_name }}"
+      cert_key_chain:
+        - cert: "{{ bigip_dest_crt_name }}_{{ now }}"
+          key: "{{ bigip_dest_crt_name }}_{{ now }}"
+    delegate_to: localhost
+
+  - name: "Delete current certificate '{{ bigip_current_crt_name }}'"
+    bigip_ssl_certificate:
+      provider: "{{ bigip_rest_provider }}"
+      name: "{{ bigip_current_crt_name }}"
+      state: absent
+    delegate_to: localhost
+
+  - name: "Delete current private key '{{ bigip_current_crt_name }}'"
+    bigip_ssl_key:
+      provider: "{{ bigip_rest_provider }}"
+      name: "{{ bigip_current_crt_name | regex_replace('^(.*)\\.crt$', '\\1.key') }}"
+      state: absent
+    delegate_to: localhost
+  rescue:
+  - name: Switch back BIG-IP Profile Client SSL
+    bigip_profile_client_ssl:
+      provider: "{{ bigip_rest_provider }}"
+      name: "{{ bigip_dest_ssl_profile_name }}"
+      cert_key_chain:
+        - cert: "{{ bigip_current_crt_name }}"
+          key: "{{ bigip_current_crt_name | regex_replace('^(.*)\\.crt$', '\\1.key') }}"
+    delegate_to: localhost
+  when: bigip_new_crt_fingerprint != bigip_current_crt_fingerprint
