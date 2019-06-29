@@ -18,8 +18,8 @@ This role has some dependencies to play.
 | Variable | Description | Default |
 | --- | --- | --- |
 | `bigip_rest_provider` | bigip login credential for rest api use. | object |
-| `bigip_src_crt_path` | source certificate path. this file on server to play this role. | "{{ certificate_directory }}/{{ certificate_crt_filename }}" |
-| `bigip_src_key_path` | source private key path. this file on server to play this role. | "{{ certificate_directory }}/{{ certificate_crt_filename }}" |
+| `bigip_src_crt_path` | source certificate path. this file is on server to play this role. | "{{ certificate_directory }}/{{ certificate_crt_filename }}" |
+| `bigip_src_key_path` | source private key path. this file is on server to play this role. | "{{ certificate_directory }}/{{ certificate_crt_filename }}" |
 | `bigip_partition` | bigip partition. | Common |
 | `bigip_dest_crt_path` | destination certificate path. this file usually under `/config/ssl/ssl.crt` directory. | "/config/ssl/ssl.crt/{{ bigip_dest_crt_name }}" |
 | `bigip_dest_key_path` | destination private key path. this file usually under `/config/ssl/ssl.key` directory. | "/config/ssl/ssl.key/{{ bigip_dest_key_name }}" |
@@ -37,7 +37,7 @@ git clone git@github.com:miyuk/ansible_bigip_certificate.git bigip_certificate
 
 ## Example Playbook
 
-create certificate under `/etc/nginx/certs`. as `example.com`.
+Install certificate from `<playbook directory>/certs`.
 
 ```yaml
 ---
@@ -51,8 +51,8 @@ create certificate under `/etc/nginx/certs`. as `example.com`.
       server_port: 443
       transport: rest
       validate_certs: no
-    bigip_src_crt_path: "{{ certificate_directory }}/{{ certificate_crt_filename }}"
-    bigip_src_key_path: "{{ certificate_directory }}/{{ certificate_crt_filename }}"
+    bigip_src_crt_path: "./certs/{{ certificate_crt_filename }}"
+    bigip_src_key_path: "./certs/{{ certificate_crt_filename }}"
     bigip_partition: Common
     bigip_dest_crt_path: "/config/ssl/ssl.crt/{{ bigip_dest_crt_name }}"
     bigip_dest_key_path: "/config/ssl/ssl.key/{{ bigip_dest_key_name }}"
