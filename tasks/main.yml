@@ -1,20 +1,20 @@
 ---
-- name: Get this time as JST
+- name: 現在時刻を取得
   set_fact:
     now: "{{ lookup('pipe', 'TZ=JST-9 date +%Y%m%d%H%M%S') }}"
 
-- name: Get new certificate fingerprint
+- name: 新規証明書のFingerprint取得
   command: "openssl x509 -in {{ bigip_src_crt_path }} -noout -sha256 -fingerprint"
   register: bigip_new_crt_fingerprint_result
   delegate_to: localhost
   changed_when: no
 
-- name: Set new certificate fingerprint
+- name: 新規証明書のFingerprintを変数化
   set_fact:
     bigip_new_crt_fingerprint: "{{ bigip_new_crt_fingerprint_result.stdout | \
       regex_replace('^SHA256 Fingerprint=(.*)$', '\\1') }}"
 
-- name: Get current certificate info
+- name: BIG-IPの証明書・秘密鍵情報を取得
   bigip_device_facts:
     provider: "{{ bigip_rest_provider }}"
     gather_subset:
@@ -24,13 +24,13 @@
   register: bigip_facts_result
   changed_when: no
 
-- name: Set current certificate path
+- name: 現在のBIG-IPのClient SSL情報を変数化
   set_fact:
     bigip_current_crt_path: "{{ bigip_facts_result.client_ssl_profiles | \
       selectattr('name', '==', bigip_dest_ssl_profile_name) | \
       map(attribute='certificate_file') | first }}"
 
-- name: Set current certificate info
+- name: 現在のBIG-IPの証明書情報を変数化
   set_fact:
     bigip_current_crt_name: "{{ bigip_facts_result.ssl_certs | \
       selectattr('full_path', '==', bigip_current_crt_path ) | \
@@ -41,21 +41,21 @@
       regex_replace('^SHA256/(.*)$', '\\1') }}"
 
 - block:
-  - name: "Import new certificate '{{ bigip_dest_crt_name }}_{{ now }}'"
+  - name: BIG-IPへ新規証明書をインポート
     bigip_ssl_certificate:
       provider: "{{ bigip_rest_provider }}"
       name: "{{ bigip_dest_crt_name }}_{{ now }}"
       content: "{{ lookup('file', bigip_src_crt_path) }}"
     delegate_to: localhost
 
-  - name: "Import new private key '{{ bigip_dest_crt_name }}_{{ now }}'"
+  - name: BIG-IPへ新規秘密鍵をインポート
     bigip_ssl_key:
       provider: "{{ bigip_rest_provider }}"
       name: "{{ bigip_dest_crt_name }}_{{ now }}"
       content: "{{ lookup('file', bigip_src_key_path) }}"
     delegate_to: localhost
 
-  - name: Change BIG-IP Profile Client SSL
+  - name: BIG-IPのClient SSL設定を変更
     bigip_profile_client_ssl:
       provider: "{{ bigip_rest_provider }}"
       name: "{{ bigip_dest_ssl_profile_name }}"
@@ -64,21 +64,21 @@
           key: "{{ bigip_dest_crt_name }}_{{ now }}"
     delegate_to: localhost
 
-  - name: "Delete current certificate '{{ bigip_current_crt_name }}'"
+  - name: 現在のBIG-IPの証明書を削除
     bigip_ssl_certificate:
       provider: "{{ bigip_rest_provider }}"
       name: "{{ bigip_current_crt_name }}"
       state: absent
     delegate_to: localhost
 
-  - name: "Delete current private key '{{ bigip_current_crt_name }}'"
+  - name: 現在のBIG-IPの秘密鍵を削除
     bigip_ssl_key:
       provider: "{{ bigip_rest_provider }}"
       name: "{{ bigip_current_crt_name | regex_replace('^(.*)\\.crt$', '\\1.key') }}"
       state: absent
     delegate_to: localhost
   rescue:
-  - name: Switch back BIG-IP Profile Client SSL
+  - name: BIG-IPのClient SSL設定を切り戻し
     bigip_profile_client_ssl:
       provider: "{{ bigip_rest_provider }}"
       name: "{{ bigip_dest_ssl_profile_name }}"
